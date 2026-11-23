@@ -1,9 +1,9 @@
 from flask import Blueprint, abort, current_app, render_template, request
 
-from .config import SOURCES, SPEC
+from .config import SLACK, SOURCES, SPEC
 from .errors import InspectionError
 from .input import sample
-from .modules.archive.service import archive
+from .modules.archive.service import archive, backfill_slack
 from .modules.archive.storage import get, recent
 from .modules.certificate.service import certify
 from .pipeline import run
@@ -17,23 +17,27 @@ console.add_app_template_filter(half_mm_metres, 'half_mm_metres')
 
 def material(mode):
     if mode == 'custom':
-        return {'traces':{key:request.form.get(key,'') for key in SOURCES},
-                'settings':{key:request.form.get(key,'') for key in FIELDS}}
+        traces = {key: request.form.get(key, '') for key in SOURCES}
+        slack_text = request.form.get(SLACK, '')
+        if slack_text:
+            traces[SLACK] = slack_text
+        return {'traces': traces,
+                'settings': {key: request.form.get(key, '') for key in FIELDS}}
     return sample(mode)
 
 
-@console.route('/', methods=['GET','POST'])
-@console.route('/inspect/<section>', methods=['GET','POST'])
+@console.route('/', methods=['GET', 'POST'])
+@console.route('/inspect/<section>', methods=['GET', 'POST'])
 def view(section='design'):
     if section not in LABELS:
         abort(404)
-    mode = request.values.get('sample','dirty')
+    mode = request.values.get('sample', 'dirty')
     database = current_app.config['DATABASE']
     evidence, frames, entries, data = None, {}, [], {}
     issued, fresh, error, sources = None, False, None, {}
     try:
         sources = material(mode)
-        if section in ('archive','certificate'):
+        if section in ('archive', 'certificate'):
             if section == 'archive' and request.method == 'POST':
                 issued, fresh = archive(database, sources)
             entries = recent(database)
@@ -48,4 +52,14 @@ def view(section='design'):
         error = exc.code
     return render_template('console.html', section=section, labels=LABELS, codes=CODES, spec=SPEC, mode=mode,
                            data=data, frames=frames, error=error, materials=sources, entries=entries,
-                           evidence=evidence, issued=issued, fresh=fresh, fields=FIELDS)
+                           evidence=evidence, issued=issued, fresh=fresh, fields=FIELDS,
+                           slack_present=bool(sources.get('traces', {}).get(SLACK)))
+
+
+@console.route('/inspect/archive/backfill/<identifier>', methods=['POST'])
+def backfill(identifier):
+    try:
+        result = backfill_slack(current_app.config['DATABASE'], identifier, request.form.get('slack', ''))
+    except InspectionError as exc:
+        return render_template('backfill.html', code=exc.code, identifier=identifier), exc.status
+    return render_template('backfill.html', code=None, result=result)

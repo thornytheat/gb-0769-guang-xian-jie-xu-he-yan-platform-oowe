@@ -6,5 +6,7 @@
 
 各预览和留档 API 接收 `{"sample":"dirty"}`、`{"sample":"clean"}` 或 `{"traces":{"a":"CSV","b":"CSV","design":"CSV"},"settings":{...}}`。参数示例见 `sample_data/dirty/link.json`。从留档页提交，在签发页下载核验包。
 
+盘留登记册为可选第四源 `slack.csv`（`coil_id,route_m,length_m,kind`，`COIL` 盘留 / `CLEAR` 无盘留确认）。有登记册时，对账把仪表链程扣减盘留后再与路由里程对齐，登记里程之外的接头挂 `PENDING_SLACK_RECORDS`，已确认区段照常验收；同里程接头各认各的双端配对。补录调用 `POST /api/inspections/<id>/slack`：原留档不可变，重算只在身份变化时新建档案，重试不重复建档，旧签发件仍按原证据核验。
+
 - [模块与独立复算](docs/DEPTH.md)
 - [字段与规则](docs/DATA-DICTIONARY.md)

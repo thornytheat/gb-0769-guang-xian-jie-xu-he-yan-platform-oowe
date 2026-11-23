@@ -2,7 +2,11 @@ from decimal import Decimal
 
 LABELS = {'trace':'轨迹文件采信','calibration':'距离方向校准','pairs':'双端最优配对','loss':'接续损耗判定',
           'design':'设计实测对账','archive':'批次留档复跑','certificate':'光纤证据签发'}
-CODES = {'PASS':'通过','OVER_LIMIT':'超限','INVALID_NET_GAIN':'净增益无效','SINGLE_SIDE_ONLY':'仅单端有测','NO_COUPLED_EVIDENCE':'双端缺证','DESIGN_OUTSIDE_LINK':'设计点越界'}
+CODES = {'PASS': '通过', 'OVER_LIMIT': '超限', 'INVALID_NET_GAIN': '净增益无效',
+         'SINGLE_SIDE_ONLY': '仅单端有测', 'NO_COUPLED_EVIDENCE': '双端缺证',
+         'DESIGN_OUTSIDE_LINK': '设计点越界', 'PENDING_SLACK_RECORDS': '待补盘留',
+         'BAD_KIND': '盘留类型错误', 'CLEAR_NOT_ZERO': '无盘留段长度须为 0',
+         'SLACK_OUTSIDE_LINK': '盘留里程越界'}
 
 
 def metres(mm):

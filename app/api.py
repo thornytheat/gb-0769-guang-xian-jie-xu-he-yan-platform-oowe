@@ -1,7 +1,8 @@
-from flask import Blueprint, current_app, jsonify
+from flask import Blueprint, current_app, jsonify, request
 
+from .errors import InspectionError
 from .input import request_material
-from .modules.archive.service import archive
+from .modules.archive.service import archive, backfill_slack
 from .modules.archive.storage import get, recent
 from .modules.certificate.service import certify
 from .pipeline import run
@@ -52,6 +53,15 @@ def list_inspections():
 @api.get('/inspections/<identifier>')
 def inspection(identifier):
     return get(current_app.config['DATABASE'], identifier)
+
+
+@api.post('/inspections/<identifier>/slack')
+def slack_backfill(identifier):
+    body = request.get_json(silent=True)
+    if not isinstance(body, dict) or 'slack' not in body:
+        raise InspectionError('SLACK_TEXT_REQUIRED', status=400)
+    result = backfill_slack(current_app.config['DATABASE'], identifier, body['slack'])
+    return result, 201 if result['created'] else 200
 
 
 @api.get('/certificate/<identifier>')

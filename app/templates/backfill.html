@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>盘留补录 · 光纤接续核验台</title>
+  <link rel="stylesheet" href="/static/theme.css">
+  <link rel="stylesheet" href="/static/terminal.css">
+</head>
+<body class="backfill-page">
+  <main class="panel">
+    <h3>$ 盘留补录结果</h3>
+    {% if code %}
+      <p class="result" data-state="OVER_LIMIT" role="alert">{{ code }} · 未生成留档，原档案保持不变。</p>
+    {% else %}
+      <p class="result" data-state="PASS" role="status">{{ '已新建重算留档' if result.created else '登记册未变化，复用既有留档' }}</p>
+      <dl>
+        <dt>源核验编号</dt><dd>{{ result.source_inspection_id[:15] }}</dd>
+        <dt>重算编号</dt><dd><a href="/inspect/certificate?inspection={{ result.inspection_id }}">{{ result.inspection_id[:15] }}</a></dd>
+      </dl>
+    {% endif %}
+    <p><a href="/inspect/archive">返回留档页</a> · <a href="/inspect/design">返回对账页</a></p>
+  </main>
+</body></html>

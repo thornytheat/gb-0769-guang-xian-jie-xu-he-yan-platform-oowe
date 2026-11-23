@@ -11,8 +11,8 @@
 | M2 距离与方向校准 | 核对双端坐标与起偏 | POST /api/calibration | `app/modules/calibration/service.py` | `tests/test_calibration.py` `tests/test_settings.py` |
 | M3 双端事件最优配对 | 核查相邻冲突及孤测 | POST /api/pairs | `app/modules/pairs/optimal.py` | `tests/test_pairs.py` `tests/test_pair_oracle.py` |
 | M4 接续净损耗判定 | 对照带符号读数和均值 | POST /api/loss | `app/modules/loss/service.py` | `tests/test_loss.py` |
-| M5 设计与实测对账 | 核对逐接头是否缺证 | POST /api/design | `app/modules/design/service.py` | `tests/test_design.py` |
-| M6 批次留档复跑 | 留档和重跑同一轨迹组 | POST /api/inspections | `app/modules/archive/storage.py` | `tests/test_archive.py` |
+| M5 设计与实测对账 | 核对逐接头是否缺证、盘留是否待补 | POST /api/design | `app/modules/design/service.py` `app/modules/slack/registry.py` | `tests/test_design.py` `tests/test_slack.py` `tests/test_slack_reconcile.py` |
+| M6 批次留档复跑 | 留档、重跑与盘留补录同一轨迹组 | POST /api/inspections、POST /api/inspections/&lt;id&gt;/slack | `app/modules/archive/storage.py` `app/modules/archive/service.py` | `tests/test_archive.py` `tests/test_slack_archive.py` |
 | M7 光纤证据签发 | 复核签发条件并下载 | GET /api/certificate/<id> | `app/modules/certificate/service.py` | `tests/test_certificate.py` |
 
 ## 陷阱登记
@@ -34,5 +34,13 @@
 - 6 个设计接头 = 3 通过 + 1 超限 + 2 缺证。
 - 12 条窗内端点 = 2×(4 已挂接 + 1 孤配) + 2 单端。窗外测量另计 1 条。
 - F-01 双向均值 (−0.100+0.300)/2=0.1000 dB，F-03 为 (0.33+0.31)/2=0.3200 dB，超出 0.200 dB。
+
+## 盘留对账规则
+
+- 仪表链程含盘留：同一路由里程的两个接头在仪表上相差一个盘留长度，可能被记成同一里程；无盘留登记册时沿用旧规则，登记册存在时，最后一条登记里程之后的设计点一律 `PENDING_SLACK_RECORDS`，不参与通过/缺证结论，已确认区段照常验收。
+- `COIL` 给位置和长度，`CLEAR` 长度必须为 0，表示该里程之前确认无未登记盘留；修正按 `路由 = 仪表链程 − 已通过盘留的累计长度` 逐条扣减，半毫米整数运算。
+- 同里程接头仍走单调一对一最优配对，各认各的双端读数，配对不得共用；一条配对不能覆盖两个设计接头。
+- 补录走 `POST /api/inspections/<id>/slack`：原快照不可变，新登记册改变身份即新建留档，相同登记册重试返回旧档（200，`created=false`），二次补录向登记册追加行；旧签发件始终按原证据核验。
+- 待补盘留计入 `missing` 桶但单独以 `PENDING_SLACK_RECORDS` 阻塞签发，不再重复报 `MISSING_JOINTS`；盘留隔离行产生 `UNVERIFIED_SLACK_ROWS`。
 
 输入为设备导出的事件表。二进制曲线解码、坡度自校与电子签章未纳入该工作台。
